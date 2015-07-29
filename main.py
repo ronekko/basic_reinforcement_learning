@@ -7,7 +7,9 @@ Created on Sat Jul 18 15:44:19 2015
 
 import time
 import numpy as np
+import matplotlib.pyplot as plt
 import vrep
+import contexttimer
 
 if __name__ == '__main__':
     try:
@@ -21,6 +23,11 @@ if __name__ == '__main__':
     assert client_id != -1, 'Failed connecting to remote API server'
 
     e = vrep.simxStartSimulation(client_id, vrep.simx_opmode_oneshot_wait)
+
+    # print ping time
+    sec, msec = vrep.simxGetPingTime(client_id)
+    print "Ping time: %f" % (sec + msec / 1000.0)
+
     # Handles of body and wheels
     e, body = vrep.simxGetObjectHandle(client_id, 'body',
                                        vrep.simx_opmode_oneshot_wait)
@@ -44,38 +51,56 @@ if __name__ == '__main__':
     # enable synchronous mode
     vrep.simxSynchronous(client_id, True)
 
-#    for i in range(10):
-#        angle_0, angle_1 = np.random.uniform(-1, 1, 2)
-#        e = vrep.simxSetJointTargetPosition(client_id, joint_0, angle_0,
-#                                            vrep.simx_opmode_streaming)
-#        e = vrep.simxSetJointTargetPosition(client_id, joint_1, angle_0,
-#                                            vrep.simx_opmode_streaming)
-#        time.sleep(1)
-
-    for i in range(4):
-        e = vrep.simxSetJointTargetPosition(client_id, joint_0, 0.5,
-                                            vrep.simx_opmode_streaming)
-        for t in range(3):
-            vrep.simxSynchronousTrigger(client_id)
-
-        e = vrep.simxSetJointTargetPosition(client_id, joint_1, 2.5,
-                                            vrep.simx_opmode_streaming)
-        for t in range(10):
-            vrep.simxSynchronousTrigger(client_id)
-
-        e = vrep.simxSetJointTargetPosition(client_id, joint_0, 0.0,
-                                            vrep.simx_opmode_streaming)
-        for t in range(2):
-            vrep.simxSynchronousTrigger(client_id)
-
-        e = vrep.simxSetJointTargetPosition(client_id, joint_1, 0.0,
-                                            vrep.simx_opmode_streaming)
-        for t in range(8):
-            vrep.simxSynchronousTrigger(client_id)
-
-    # Get absolute position of the body with specifying -1
+    position_history = []
     e, body_pos = vrep.simxGetObjectPosition(client_id, body, -1,
                                              vrep.simx_opmode_buffer)
-    print body_pos
+    position_history.append(body_pos)
+
+    with contexttimer.Timer() as timer:
+        for i in range(4):
+            e = vrep.simxSetJointTargetPosition(client_id, joint_0, 0.5,
+                                                vrep.simx_opmode_streaming)
+            for t in range(3):
+                vrep.simxSynchronousTrigger(client_id)
+                e, body_pos = vrep.simxGetObjectPosition(
+                    client_id, body, -1, vrep.simx_opmode_buffer)
+                position_history.append(body_pos)
+
+            e = vrep.simxSetJointTargetPosition(client_id, joint_1, 2.5,
+                                                vrep.simx_opmode_streaming)
+            for t in range(10):
+                vrep.simxSynchronousTrigger(client_id)
+                e, body_pos = vrep.simxGetObjectPosition(
+                    client_id, body, -1, vrep.simx_opmode_buffer)
+                position_history.append(body_pos)
+
+            e = vrep.simxSetJointTargetPosition(client_id, joint_0, 0.0,
+                                                vrep.simx_opmode_streaming)
+            for t in range(2):
+                vrep.simxSynchronousTrigger(client_id)
+                e, body_pos = vrep.simxGetObjectPosition(
+                    client_id, body, -1, vrep.simx_opmode_buffer)
+                position_history.append(body_pos)
+
+            e = vrep.simxSetJointTargetPosition(client_id, joint_1, 0.0,
+                                                vrep.simx_opmode_streaming)
+            for t in range(8):
+                vrep.simxSynchronousTrigger(client_id)
+                e, body_pos = vrep.simxGetObjectPosition(
+                    client_id, body, -1, vrep.simx_opmode_buffer)
+                position_history.append(body_pos)
+
+    print "Elapsed time (wall-clock): ", timer.elapsed
+
+    # plot xyz trajectory of the body
+    T = len(position_history)
+    plt.gca().set_color_cycle('rgb')
+    plt.plot(np.arange(T) * 0.05, np.array(position_history))
+    plt.legend(['x', 'y', 'z'], loc='best')
+    plt.title('Position of the body')
+    plt.xlabel('time in simulation [s]')
+    plt.ylabel('position [m]')
+    plt.grid()
+    plt.show()
 
     e = vrep.simxStopSimulation(client_id, vrep.simx_opmode_oneshot_wait)
