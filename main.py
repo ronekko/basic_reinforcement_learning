@@ -41,6 +41,9 @@ if __name__ == '__main__':
     # Wait until the robot is settled to the default position
     time.sleep(0.3)
 
+    # enable synchronous mode
+    vrep.simxSynchronous(client_id, True)
+
 #    for i in range(10):
 #        angle_0, angle_1 = np.random.uniform(-1, 1, 2)
 #        e = vrep.simxSetJointTargetPosition(client_id, joint_0, angle_0,
@@ -52,16 +55,23 @@ if __name__ == '__main__':
     for i in range(4):
         e = vrep.simxSetJointTargetPosition(client_id, joint_0, 0.5,
                                             vrep.simx_opmode_streaming)
-        time.sleep(0.01)
+        for t in range(3):
+            vrep.simxSynchronousTrigger(client_id)
+
         e = vrep.simxSetJointTargetPosition(client_id, joint_1, 2.5,
                                             vrep.simx_opmode_streaming)
-        time.sleep(0.3)
+        for t in range(10):
+            vrep.simxSynchronousTrigger(client_id)
+
         e = vrep.simxSetJointTargetPosition(client_id, joint_0, 0.0,
                                             vrep.simx_opmode_streaming)
-        time.sleep(0.05)
-        e = vrep.simxSetJointTargetPosition(client_id, joint_1, 0.5,
+        for t in range(2):
+            vrep.simxSynchronousTrigger(client_id)
+
+        e = vrep.simxSetJointTargetPosition(client_id, joint_1, 0.0,
                                             vrep.simx_opmode_streaming)
-        time.sleep(0.2)
+        for t in range(8):
+            vrep.simxSynchronousTrigger(client_id)
 
     # Get absolute position of the body with specifying -1
     e, body_pos = vrep.simxGetObjectPosition(client_id, body, -1,
