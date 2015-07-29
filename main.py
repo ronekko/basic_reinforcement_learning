@@ -56,6 +56,13 @@ if __name__ == '__main__':
                                              vrep.simx_opmode_buffer)
     position_history.append(body_pos)
 
+    joint_pos_history = []
+    e, joint_0_pos = vrep.simxGetJointPosition(client_id, joint_0,
+                                               vrep.simx_opmode_streaming)
+    e, joint_1_pos = vrep.simxGetJointPosition(client_id, joint_1,
+                                               vrep.simx_opmode_streaming)
+    joint_pos_history.append([joint_0_pos, joint_1_pos])
+
     with contexttimer.Timer() as timer:
         for i in range(4):
             e = vrep.simxSetJointTargetPosition(client_id, joint_0, 0.5,
@@ -65,6 +72,11 @@ if __name__ == '__main__':
                 e, body_pos = vrep.simxGetObjectPosition(
                     client_id, body, -1, vrep.simx_opmode_buffer)
                 position_history.append(body_pos)
+                e, joint_0_pos = vrep.simxGetJointPosition(
+                    client_id, joint_0, vrep.simx_opmode_buffer)
+                e, joint_1_pos = vrep.simxGetJointPosition(
+                    client_id, joint_1, vrep.simx_opmode_buffer)
+                joint_pos_history.append([joint_0_pos, joint_1_pos])
 
             e = vrep.simxSetJointTargetPosition(client_id, joint_1, 2.5,
                                                 vrep.simx_opmode_streaming)
@@ -73,6 +85,11 @@ if __name__ == '__main__':
                 e, body_pos = vrep.simxGetObjectPosition(
                     client_id, body, -1, vrep.simx_opmode_buffer)
                 position_history.append(body_pos)
+                e, joint_0_pos = vrep.simxGetJointPosition(
+                    client_id, joint_0, vrep.simx_opmode_buffer)
+                e, joint_1_pos = vrep.simxGetJointPosition(
+                    client_id, joint_1, vrep.simx_opmode_buffer)
+                joint_pos_history.append([joint_0_pos, joint_1_pos])
 
             e = vrep.simxSetJointTargetPosition(client_id, joint_0, 0.0,
                                                 vrep.simx_opmode_streaming)
@@ -81,6 +98,11 @@ if __name__ == '__main__':
                 e, body_pos = vrep.simxGetObjectPosition(
                     client_id, body, -1, vrep.simx_opmode_buffer)
                 position_history.append(body_pos)
+                e, joint_0_pos = vrep.simxGetJointPosition(
+                    client_id, joint_0, vrep.simx_opmode_buffer)
+                e, joint_1_pos = vrep.simxGetJointPosition(
+                    client_id, joint_1, vrep.simx_opmode_buffer)
+                joint_pos_history.append([joint_0_pos, joint_1_pos])
 
             e = vrep.simxSetJointTargetPosition(client_id, joint_1, 0.0,
                                                 vrep.simx_opmode_streaming)
@@ -89,6 +111,11 @@ if __name__ == '__main__':
                 e, body_pos = vrep.simxGetObjectPosition(
                     client_id, body, -1, vrep.simx_opmode_buffer)
                 position_history.append(body_pos)
+                e, joint_0_pos = vrep.simxGetJointPosition(
+                    client_id, joint_0, vrep.simx_opmode_buffer)
+                e, joint_1_pos = vrep.simxGetJointPosition(
+                    client_id, joint_1, vrep.simx_opmode_buffer)
+                joint_pos_history.append([joint_0_pos, joint_1_pos])
 
     print "Elapsed time (wall-clock): ", timer.elapsed
 
@@ -100,6 +127,18 @@ if __name__ == '__main__':
     plt.title('Position of the body')
     plt.xlabel('time in simulation [s]')
     plt.ylabel('position [m]')
+    plt.grid()
+    plt.show()
+
+    # plot joint positions
+    plt.figure()
+    T = len(joint_pos_history)
+    plt.gca().set_color_cycle('rgb')
+    plt.plot(np.arange(T) * 0.05, np.array(joint_pos_history))
+    plt.legend(['joint_0', 'joint_1'], loc='best')
+    plt.title('Position of the joints')
+    plt.xlabel('time in simulation [s]')
+    plt.ylabel('position [rad]')
     plt.grid()
     plt.show()
 
