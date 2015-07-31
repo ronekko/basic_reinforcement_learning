@@ -1,1 +1,1 @@
-vrep -gREMOTEAPISERVERSERVICE_19998_TRUE_TRUE vrep_basic_reinforcement_learning.ttt
+vrep -gREMOTEAPISERVERSERVICE_19998_FALSE_TRUE vrep_basic_reinforcement_learning.ttt
