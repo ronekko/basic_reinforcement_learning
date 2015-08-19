@@ -24,6 +24,7 @@ class MLP(FunctionSet):
         )
 
     def forward(self, x_data, train=False):
+        x_data = np.atleast_2d(x_data)
         x = Variable(x_data, volatile=not train)
         h = F.relu(self.fc1(x))
         h = F.relu(self.fc2(h))
@@ -42,8 +43,10 @@ class Memory(object):
         self.index = 0
 
     def append(self, states, actions, rewards, next_states):
+        actions, rewards = np.atleast_1d(actions), np.atleast_1d(rewards)
+        states, next_states = np.atleast_2d(states), np.atleast_2d(next_states)
         num_examples = len(states)
-#       assert num_examples == len(actions) == len(rewards) == len(next_states)
+        assert num_examples == len(actions) == len(rewards) == len(next_states)
 
         if self.memory_size < self.max_memory_size:
             self.memory_size += num_examples
@@ -121,7 +124,7 @@ class NFQAgent(object):
 
     def observe_state(self):
         angles = self.robot.get_joint_angles()
-        return angles.reshape((1, self.state_dims))
+        return angles
 
     def play_one_step(self):
         action = self.choose_action(self.state)
