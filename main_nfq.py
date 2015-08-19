@@ -84,7 +84,7 @@ class NFQAgent(object):
         self.angles_lut = np.array(np.meshgrid(self.angles_1, self.angles_0,
                                    indexing='ij')).reshape(2, -1).T
 
-        self.state_dims = 2
+        self.state_dims = 4
 
         self.gamma = gamma      # discount factor
         self.epsilon_initial = epsilon_initial
@@ -123,8 +123,10 @@ class NFQAgent(object):
         self.robot.proceed_simulation()
 
     def observe_state(self):
-        angles = self.robot.get_joint_angles()
-        return angles
+        current_angles = self.robot.get_joint_angles()
+        last_angles = self.state[:2]
+        state = np.concatenate((current_angles, last_angles))
+        return state
 
     def play_one_step(self):
         action = self.choose_action(self.state)
@@ -161,6 +163,7 @@ class NFQAgent(object):
         self.robot.restart_simulation()
         self.robot.initialize_pose()
         self.position = self.robot.get_body_position()
+        self.state = np.zeros(self.state_dims, dtype=np.float32)
         self.state = self.observe_state()
 
     def update_q_function(self):
@@ -278,8 +281,8 @@ if __name__ == '__main__':
     robot = Robot(client_id)
     agent = NFQAgent(robot, gamma=0.9, exploration_episodes=1000,
                      epsilon_initial=1.0, epsilon_final=0.1,
-                     memory_size=50000, num_h1=20, num_h2=20,
-                     learning_rate=0.0005, num_epochs=5, minibatch_size=100)
+                     memory_size=200000, num_h1=20, num_h2=20,
+                     learning_rate=0.0001, num_epochs=10, minibatch_size=100)
 
     num_episodes = 2000
     len_episode = 100
@@ -311,7 +314,7 @@ if __name__ == '__main__':
                 with contexttimer.Timer() as timer:
                     loss_history = agent.update_q_function()
                 time_for_train = timer.elapsed
-                agent.show_q_function()
+#                agent.show_q_function()
 
             agent.update_epsilon()
             agent.increment_episode()
