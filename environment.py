@@ -56,7 +56,7 @@ class Robot(object):
         rc, body_position = vrep.simxGetObjectPosition(
             self.client_id, self.body, -1, mode)
         assert rc == (1 if initial else 0), rc
-        return np.array(body_position)
+        return np.array(body_position).astype(np.float32)
 
     def get_joint_angles(self, initial=False):
         if initial:
@@ -68,7 +68,7 @@ class Robot(object):
             rc, angle = vrep.simxGetJointPosition(self.client_id, joint, mode)
             assert rc == (1 if initial else 0), rc
             angles.append(angle)
-        return np.array(angles)
+        return np.array(angles).astype(np.float32)
 
     def set_joint_angles(self, angles):
         assert len(angles) == 2
