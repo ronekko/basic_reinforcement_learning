@@ -5,6 +5,7 @@ Created on Mon Aug 10 20:38:01 2015
 @author: sakurai
 """
 
+import copy
 import numpy as np
 import matplotlib.pyplot as plt
 import vrep
@@ -67,6 +68,15 @@ class Memory(object):
                 self.rewards[:self.memory_size],
                 self.next_states[:self.memory_size])
 
+    def get_random_batch(self, batch_size):
+        states, actions, rewards, next_states = self.get_data()
+        num_examples = len(states)
+        if batch_size > num_examples:
+            batch_size = num_examples
+        indexes = np.random.choice(num_examples, batch_size, replace=True)
+        return (states[indexes], actions[indexes],
+                rewards[indexes], next_states[indexes])
+
 
 class NFQAgent(object):
     def __init__(self, robot, gamma=0.9, exploration_episodes=100,
@@ -100,9 +110,10 @@ class NFQAgent(object):
         self.minibatch_size = minibatch_size
 
         self.mlp = MLP(self.state_dims, self.num_actions, num_h1, num_h2)
+        self.target_mlp = copy.deepcopy(self.mlp)
         self.optimizer = optimizers.MomentumSGD(self.lr)
         self.optimizer = optimizers.RMSprop(self.lr)
-#        self.optimizer = optimizers.RMSpropGraves(self.lr)
+        self.optimizer = optimizers.RMSpropGraves(self.lr)
         self.optimizer.setup(self.mlp.collect_parameters())
 
         self.num_episodes = 0
@@ -125,7 +136,8 @@ class NFQAgent(object):
     def observe_state(self):
         current_angles = self.robot.get_joint_angles()
         last_angles = self.state[:2]
-        state = np.concatenate((current_angles, last_angles))
+        increment = current_angles - last_angles
+        state = np.concatenate((current_angles, increment))
         return state
 
     def play_one_step(self):
@@ -139,9 +151,12 @@ class NFQAgent(object):
         reward = x_forward - 0.001
 
         self.add_memory(self.state, action, reward, state_new)
+        loss = self.update_q_function()
 
         self.state = state_new
         self.position = position_new
+
+        return loss
 
     def increment_episode(self):
         self.num_episodes += 1
@@ -167,39 +182,29 @@ class NFQAgent(object):
         self.state = self.observe_state()
 
     def update_q_function(self):
-        states, actions, rewards, next_states = self.memory.get_data()
-        next_q = self.mlp.forward(next_states, train=False).data
-        optimal_next_q = np.max(next_q, axis=1)
-        targets = rewards + self.gamma * optimal_next_q
-
+        minibatch = self.memory.get_random_batch(self.minibatch_size)
+        states, actions, rewards, next_states = minibatch
         num_examples = len(states)
-        batch_size = 100
-        num_batches = num_examples / batch_size
-        loss_history = []
 
-        for epoch in range(self.num_epochs):
-            loss_epoch_history = []
-            perm = np.random.permutation(num_examples)
-            for indexes in np.array_split(perm, num_batches):
-                x_batch = states[indexes]
-                self.optimizer.zero_grads()
-                y = self.mlp.forward(x_batch, train=True)
+        self.optimizer.zero_grads()
+        y = self.mlp.forward(states, train=True)
 
-                # make targets
-                a_batch = actions[indexes]
-                target_batch = targets[indexes]
-                t_data = y.data.copy()
-                t_data[np.arange(len(t_data)), a_batch] = target_batch
-                t = Variable(t_data)
+        # make targets
+        next_q = self.target_mlp.forward(next_states, train=False).data
+        optimal_next_q = np.max(next_q, axis=1)
+        bellman_targets = rewards + self.gamma * optimal_next_q
+        t_data = y.data.copy()
+        t_data[np.arange(num_examples), actions] = bellman_targets
+        t = Variable(t_data)
 
-                loss = F.mean_squared_error(y, t)
-                loss.backward()
-                self.optimizer.update()
-                loss_epoch_history.append(loss.data)
-            loss_mean = np.mean(loss_epoch_history)
-            loss_history.append(loss_mean)
+        loss = F.mean_squared_error(y, t)
+        loss.backward()
+        self.optimizer.update()
 
-        return np.array(loss_history)
+        return loss.data
+
+    def update_target_q_function(self):
+        self.target_mlp = copy.deepcopy(self.mlp)
 
     def show_q_function(self):
         """show mappings from state space to reward for each action"""
@@ -257,7 +262,7 @@ def plot(body_trajectory, joints_trajectory, return_history, loss_history):
     ax4.grid()
     ax4.plot(loss_history)
     ax4.set_title('Learning curve')
-    ax4.set_xlabel('epoch')
+    ax4.set_xlabel('batches')
     ax4.set_ylabel('loss')
 
     plt.tight_layout()
@@ -282,13 +287,12 @@ if __name__ == '__main__':
     agent = NFQAgent(robot, gamma=0.9, exploration_episodes=1000,
                      epsilon_initial=1.0, epsilon_final=0.1,
                      memory_size=200000, num_h1=20, num_h2=20,
-                     learning_rate=0.0001, num_epochs=10, minibatch_size=100)
+                     learning_rate=0.0001, num_epochs=1, minibatch_size=50)
 
     num_episodes = 2000
     len_episode = 100
     return_history = []
     loss_history = []
-    time_for_train = None
     try:
         for episode in range(num_episodes):
             print "start simulation # %d" % episode
@@ -300,8 +304,9 @@ if __name__ == '__main__':
                 joints_trajectory = [robot.get_joint_angles()]
 
                 for t in range(len_episode):
-                    agent.play_one_step()
+                    loss = agent.play_one_step()
 
+                    loss_history.append(loss)
                     body_trajectory.append(robot.get_body_position())
                     joints_trajectory.append(robot.get_joint_angles())
             time_for_episode = timer.elapsed
@@ -309,12 +314,10 @@ if __name__ == '__main__':
             position = body_trajectory[-1]
             return_history.append(position[0])
 
-            # update Q-function
-            if (episode + 1) % 5 == 0:
-                with contexttimer.Timer() as timer:
-                    loss_history = agent.update_q_function()
-                time_for_train = timer.elapsed
-#                agent.show_q_function()
+            # update target Q-function
+            if (episode + 1) % 25 == 0:
+                agent.update_target_q_function()
+                loss_history = []
 
             agent.update_epsilon()
             agent.increment_episode()
@@ -324,8 +327,8 @@ if __name__ == '__main__':
             print
             print "Body position: ", position
             print "Time to play this episode (wall-clock): ", time_for_episode
-            print "Time to train", time_for_train
             print "Current epsilon", agent.epsilon
+            print "|W|", [np.linalg.norm(p) for p in agent.mlp.parameters[::2]]
             print
 
     except KeyboardInterrupt:
