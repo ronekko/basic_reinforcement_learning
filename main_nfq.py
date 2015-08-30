@@ -94,7 +94,7 @@ class NFQAgent(object):
         self.angles_lut = np.array(np.meshgrid(self.angles_1, self.angles_0,
                                    indexing='ij')).reshape(2, -1).T
 
-        self.state_dims = 4
+        self.state_dims = 6
 
         self.gamma = gamma      # discount factor
         self.epsilon_initial = epsilon_initial
@@ -134,10 +134,21 @@ class NFQAgent(object):
         self.robot.proceed_simulation()
 
     def observe_state(self):
+        """The state is defined as
+        (angle_0, angle_1, body_z, angle_inc_0, angle_inc_1, body_inc_z),
+        where body_z corresponds to up-down axis
+        """
         current_angles = self.robot.get_joint_angles()
         last_angles = self.state[:2]
-        increment = current_angles - last_angles
-        state = np.concatenate((current_angles, increment))
+        delta_angle = current_angles - last_angles
+
+        current_position = self.robot.get_body_position()
+        current_z = np.atleast_1d(current_position[2])
+        last_z = self.state[2]
+        delta_z = current_z - last_z
+
+        state = np.concatenate((current_angles, current_z,
+                                delta_angle, delta_z))
         return state
 
     def play_one_step(self):
