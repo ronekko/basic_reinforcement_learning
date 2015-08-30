@@ -24,7 +24,7 @@ class Robot(object):
     def restart_simulation(self):
         rc = vrep.simxStopSimulation(self.client_id,
                                      vrep.simx_opmode_oneshot_wait)
-        time.sleep(0.5)
+        time.sleep(0.3)
         self.start_simulation()
 
     def proceed_simulation(self, num_steps=1):
@@ -78,7 +78,7 @@ class Robot(object):
 
     def initialize_pose(self):
         self.set_joint_angles([0, 0])
-        self.proceed_simulation(10)
+        self.proceed_simulation(5)
 
 
 if __name__ == '__main__':
