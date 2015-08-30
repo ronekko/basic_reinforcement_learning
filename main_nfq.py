@@ -318,8 +318,10 @@ if __name__ == '__main__':
                     loss = agent.play_one_step()
 
                     loss_history.append(loss)
-                    body_trajectory.append(robot.get_body_position())
-                    joints_trajectory.append(robot.get_joint_angles())
+#                    body_trajectory.append(robot.get_body_position())
+#                    joints_trajectory.append(robot.get_joint_angles())
+                    body_trajectory.append(agent.position)
+                    joints_trajectory.append(agent.state[:2])
             time_for_episode = timer.elapsed
 
             position = body_trajectory[-1]
