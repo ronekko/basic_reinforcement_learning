@@ -191,6 +191,7 @@ class NFQAgent(object):
         self.position = self.robot.get_body_position()
         self.state = np.zeros(self.state_dims, dtype=np.float32)
         self.state = self.observe_state()
+        self.state = self.observe_state()  # need to ovserve 2 times for delta
 
     def update_q_function(self):
         minibatch = self.memory.get_random_batch(self.minibatch_size)
