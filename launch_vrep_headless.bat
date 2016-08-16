@@ -1,2 +1,3 @@
-set PATH=%PATH%;"C:\Program Files (x86)\V-REP3\V-REP_PRO_EDU"
-vrep -h -gREMOTEAPISERVERSERVICE_19998_FALSE_TRUE vrep_basic_reinforcement_learning.ttt
+set "CURRENT_DIR=%cd%"
+cd "C:\Program Files (x86)\V-REP3\V-REP_PRO_EDU"
+vrep -h -gREMOTEAPISERVERSERVICE_19998_FALSE_TRUE %CURRENT_DIR%\vrep_basic_reinforcement_learning.ttt
